@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html class="no-js" lang="">
+  <head>
+    <meta charset="utf-8" />
+    <title>Konva Rect Demo</title>
+    <style>
+      body {
+        margin: auto;
+        padding: 0;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        overflow: hidden;
+      }
+
+      #container {
+        position: absolute;
+        width: 100%;
+        height: 100%;
+        z-index: 50;
+      }
+      .loader {
+        display: none;
+        position: absolute;
+        z-index: 99;
+        font-size: 10px;
+        margin: 50px auto;
+        text-indent: -9999em;
+        width: 11em;
+        height: 11em;
+        border-radius: 50%;
+        background: #18f2ff;
+        background: -moz-linear-gradient(
+          left,
+          #18f2ff 10%,
+          rgba(24, 242, 255, 0) 42%
+        );
+        background: -webkit-linear-gradient(
+          left,
+          #18f2ff 10%,
+          rgba(24, 242, 255, 0) 42%
+        );
+        background: -o-linear-gradient(
+          left,
+          #18f2ff 10%,
+          rgba(24, 242, 255, 0) 42%
+        );
+        background: -ms-linear-gradient(
+          left,
+          #18f2ff 10%,
+          rgba(24, 242, 255, 0) 42%
+        );
+        background: linear-gradient(
+          to right,
+          #18f2ff 10%,
+          rgba(24, 242, 255, 0) 42%
+        );
+        -webkit-animation: load3 1.4s infinite linear;
+        animation: load3 1.4s infinite linear;
+        -webkit-transform: translateZ(0);
+        -ms-transform: translateZ(0);
+        transform: translateZ(0);
+      }
+      .loader:before {
+        width: 50%;
+        height: 50%;
+        background: #18f2ff;
+        border-radius: 100% 0 0 0;
+        position: absolute;
+        top: 0;
+        left: 0;
+        content: "";
+      }
+      .loader:after {
+        background: #ffffff;
+        width: 75%;
+        height: 75%;
+        border-radius: 50%;
+        content: "";
+        margin: auto;
+        position: absolute;
+        top: 0;
+        left: 0;
+        bottom: 0;
+        right: 0;
+      }
+      @-webkit-keyframes load3 {
+        0% {
+          -webkit-transform: rotate(0deg);
+          transform: rotate(0deg);
+        }
+        100% {
+          -webkit-transform: rotate(360deg);
+          transform: rotate(360deg);
+        }
+      }
+      @keyframes load3 {
+        0% {
+          -webkit-transform: rotate(0deg);
+          transform: rotate(0deg);
+        }
+        100% {
+          -webkit-transform: rotate(360deg);
+          transform: rotate(360deg);
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div id="loader" class="loader"></div>
+    <div id="container"></div>
+    <img id="filterImg" src="" alt="" />
+    <canvas id="canvasOutput"></canvas>
+
+    <script src="https://unpkg.com/konva@8.2.3/konva.min.js"></script>
+    <script src="filterous2-2.0.0.min.js"></script>
+    <!-- Loader -->
+    <script type="text/javascript">
+      var loader = document.getElementById("loader");
+      function activeLoader() {
+        loader.style.display = "block";
+      }
+
+      function unActiveLoader() {
+        loader.style.display = "none";
+      }
+    </script>
+    <!-- Stack -->
+    <script type="text/javascript">
+      class Stack {
+        constructor() {
+          this.stack = [];
+          this.length = 0;
+        }
+
+        push(el) {
+          this.stack.push(el);
+          this.length++;
+        }
+
+        pop() {
+          this.stack.pop();
+          this.length--;
+        }
+
+        size() {
+          return this.length;
+        }
+      }
+    </script>
+    <!-- Konvajs -->
+    <script type="text/javascript">
+      var windowWidth = window.innerWidth;
+      var windowHeight = window.innerHeight;
+      var historyLayer = new Stack();
+
+      var baesImage, fliterImage;
+      var imageLayer, fliterLayer;
+
+      var stage = new Konva.Stage({
+        container: "container",
+        width: windowWidth,
+        height: windowHeight,
+      });
+
+      imageLayer = new Konva.Layer();
+      fliterLayer = new Konva.Layer();
+      stage.add(imageLayer);
+      stage.add(fliterLayer);
+    </script>
+    <!-- Web-glowing function require OpenCV.js -->
+    <script type="text/javascript">
+      function face2(image, value1, value2) {
+        let dst = new cv.Mat();
+        if (value1 == null || value1 == undefined) value1 = 3; //磨皮系数
+        if (value2 == null || value2 == undefined) value2 = 1; //细节系数 0.5 - 2
+
+        var dx = value1 * 5; //双边滤波参数
+        var fc = value1 * 12.5; //参数
+        var p = 0.1; //透明度
+
+        let temp1 = new cv.Mat(),
+          temp2 = new cv.Mat(),
+          temp3 = new cv.Mat(),
+          temp4 = new cv.Mat();
+
+        cv.cvtColor(image, image, cv.COLOR_RGBA2RGB, 0);
+
+        cv.bilateralFilter(image, temp1, dx, fc, fc); //bilateralFilter(Src)
+
+        let temp22 = new cv.Mat();
+        cv.subtract(temp1, image, temp22); //bilateralFilter(Src) - Src
+
+        cv.add(
+          temp22,
+          new cv.Mat(
+            image.rows,
+            image.cols,
+            image.type(),
+            new cv.Scalar(128, 128, 128, 128)
+          ),
+          temp2
+        ); //bilateralFilter(Src) - Src + 128
+
+        cv.GaussianBlur(
+          temp2,
+          temp3,
+          new cv.Size(2 * value2 - 1, 2 * value2 - 1),
+          0,
+          0
+        );
+        //2 * GuassBlur(bilateralFilter(Src) - Src + 128) - 1
+
+        let temp44 = new cv.Mat();
+        temp3.convertTo(temp44, temp3.type(), 2, -255);
+        //2 * GuassBlur(bilateralFilter(Src) - Src + 128) - 256
+
+        cv.add(image, temp44, temp4);
+        cv.addWeighted(image, p, temp4, 1 - p, 0.0, dst);
+        //Src * (100 - Opacity)
+
+        cv.add(
+          dst,
+          new cv.Mat(
+            image.rows,
+            image.cols,
+            image.type(),
+            new cv.Scalar(10, 10, 10, 0)
+          ),
+          dst
+        );
+        //(Src * (100 - Opacity) + (Src + 2 * GuassBlur(bilateralFilter(Src) - Src + 128) - 256) * Opacity) /100
+
+        return dst;
+      }
+    </script>
+    <!-- OpenCVReady. It will render the web glow for image first -->
+    <script type="text/javascript">
+      var baseImageURL;
+      var filterImg = document.getElementById("filterImg");
+      function webGlowImage() {
+        return new Promise((res, rej) => {
+          activeLoader();
+          var imageObj = new Image(500, 550);
+          imageObj.onload = function () {
+            let mat = cv.imread(imageObj);
+            mat = face2(mat, 4, 3);
+            // create canvas element for output result from Opencv
+            var canvas = document.createElement("canvas");
+            cv.imshow(canvas, mat);
+            mat.delete();
+
+            // Get image data url
+            baseImageURL = canvas.toDataURL("image/jpg");
+
+            // add result into Konva layer
+            baseImage = new Konva.Image({
+              image: canvas,
+              draggable: true, // remove this line when production
+            });
+            // clone image object into fliter layer
+            imageLayer.add(baseImage);
+            imageLayer.hide();
+            document.body.appendChild(imageObj);
+            unActiveLoader();
+
+            res();
+          };
+          imageObj.src = "billie.jpg";
+        });
+      }
+
+      function filterImage(filterName) {
+        var imgObj = new Image();
+        imgObj.src = baseImageURL;
+        imgObj.onload = function () {
+          filterous
+            .importImage(imgObj)
+            .applyInstaFilter(filterName)
+            .renderHtml(filterImg);
+        };
+      }
+
+     // rise, nashville,moon, earlybird, mayfair
+     // ashby, charmes
+      function openCvReady() {
+        cv["onRuntimeInitialized"] = () => {
+          webGlowImage().then(function () {
+            filterImage("nashville");
+          });
+          // document.body.appendChild(imageObj)
+
+          // var stage = new Konva.Stage({
+          //   container: 'container',
+          //   width: width,
+          //   height: height
+          // });
+
+          // var imageLayer = new Konva.Layer();
+          //
+          // var imageObj = new Image();
+          // imageObj.onload = function () {
+          //   var billie = new Konva.Image({
+          //     x: 50,
+          //     y: 50,
+          //     image: imageObj,
+          //     width: 500,
+          //     height: 550,
+          //   });
+          //
+          //   // add the shape to the layer
+          //   imageLayer.add(billie);
+          //  };
+          // imageObj.src = 'billie.jpg';
+
+          // Konva.Image.fromURL('billie.jpg', function(node) {
+          //   node.setAttrs({
+          //     x: 200,
+          //     y:50,
+          //     width: 400,
+          //     height: 450
+          //   });
+          //
+          //   imageLayer.add(node)
+          // })
+
+          //stage.add(imageLayer);
+        };
+      }
+    </script>
+    <script async src="./opencv.js" onload="openCvReady()"></script>
+  </body>
+</html>
