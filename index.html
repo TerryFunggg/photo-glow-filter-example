@@ -259,9 +259,13 @@
               image: canvas,
               draggable: true, // remove this line when production
             });
-            // clone image object into fliter layer
             imageLayer.add(baseImage);
+
+            //baseImage.cache();
+            // baseImage.filters([Konva.Filters.Sepia]);
+            // baseImage.filters([Konva.Filters.Solarize]);
             imageLayer.hide();
+            // orgin image, for testing
             document.body.appendChild(imageObj);
             unActiveLoader();
 
@@ -271,23 +275,35 @@
         });
       }
 
-      function filterImage(filterName) {
+     // If "requiredFilter" is null,
+     // it will return normal image use to init
+      function filterImage(target, requiredFilter) {
+        var filterEffects = [
+          "clarendon",
+          "gingham",
+          "amaro",
+          "lofi",
+          "willow"
+        ]
         var imgObj = new Image();
         imgObj.src = baseImageURL;
         imgObj.onload = function () {
-          filterous
-            .importImage(imgObj)
-            .applyInstaFilter(filterName)
-            .renderHtml(filterImg);
-        };
+          if(requiredFilter && filterEffects.includes(requiredFilter)) {
+            filterous
+              .importImage(imgObj)
+              .applyInstaFilter(requiredFilter)
+              .renderHtml(target);
+          } else {
+            filterImg.src = imgObj.src
+          }
+        }
       }
 
-     // rise, nashville,moon, earlybird, mayfair
-     // ashby, charmes
       function openCvReady() {
         cv["onRuntimeInitialized"] = () => {
           webGlowImage().then(function () {
-            filterImage("nashville");
+            // pass empty values into init image for user filter
+            filterImage(filterImg);
           });
           // document.body.appendChild(imageObj)
 
